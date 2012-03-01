@@ -1,0 +1,5 @@
+gcc genromfs.c
+mkdir filesystem
+echo "0123456789" > filesystem/number.txt
+./a.out -d filesystem/ -f romfs.img
+dd if=./romfs.img of=../ram.img

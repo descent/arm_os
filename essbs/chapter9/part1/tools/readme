@@ -1,0 +1,11 @@
+gcc genromfs.c
+mkdir filesystem
+echo "0123456789" > filesystem/number.txt
+
+arm-elf-gcc -e main -nostartfiles -nostdlib -Ttext 0x30100000 -o main main.c
+arm-elf-objcopy -O binary main main.bin
+
+cp main filesystem
+
+./a.out -d filesystem/ -f romfs.img
+dd if=./romfs.img of=../ram.img
