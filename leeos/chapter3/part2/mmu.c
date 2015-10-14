@@ -16,6 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see http://www.gnu.org/licenses/.
 */
 
+#ifdef TEST_MMU
+#include <stdio.h>
+#endif
+
 
 /*mask for page table base addr*/
 #define PAGE_TABLE_L1_BASE_ADDR_MASK	(0xffffc000)
@@ -37,6 +41,7 @@ along with this program.  If not, see http://www.gnu.org/licenses/.
 #define VIRTUAL_IO_ADDR				0xc8000000
 #define IO_MAP_SIZE					0x18000000
 
+#ifndef TEST_MMU
 void start_mmu(void){
 	unsigned int ttb=L1_PTR_BASE_ADDR;
 
@@ -55,6 +60,7 @@ void start_mmu(void){
 		:"r0"
 	);
 }
+#endif
 
 unsigned int gen_l1_pte(unsigned int paddr){
 	return (paddr&PTE_L1_SECTION_PADDR_BASE_MASK)|\
@@ -79,7 +85,11 @@ void init_sys_mmu(void){
 		pte|=PTE_L1_SECTION_DOMAIN_DEFAULT;
 		pte_addr=gen_l1_pte_addr(L1_PTR_BASE_ADDR,\
 								VIRTUAL_MEM_ADDR+(j<<20));
+#ifdef TEST_MMU
+                printf("%d ## pte_addr: %x, pte: %x\n", j, pte_addr, pte);
+#else
 		*(volatile unsigned int *)pte_addr=pte;
+#endif
 	}
 	for(j=0;j<IO_MAP_SIZE>>20;j++){
 		pte=gen_l1_pte(PHYSICAL_IO_ADDR+(j<<20));
@@ -88,6 +98,19 @@ void init_sys_mmu(void){
 		pte|=PTE_L1_SECTION_DOMAIN_DEFAULT;
 		pte_addr=gen_l1_pte_addr(L1_PTR_BASE_ADDR,\
 								VIRTUAL_IO_ADDR+(j<<20));
+#ifdef TEST_MMU
+                printf("%d (IO) ## pte_addr: %x, pte: %x\n", j, pte_addr, pte);
+#else
 		*(volatile unsigned int *)pte_addr=pte;
+#endif
 	}
 }
+
+#ifdef TEST_MMU
+int main(int argc, char *argv[])
+{
+  init_sys_mmu();
+  
+  return 0;
+}
+#endif
