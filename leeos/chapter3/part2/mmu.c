@@ -20,7 +20,28 @@ along with this program.  If not, see http://www.gnu.org/licenses/.
 #include <stdio.h>
 #endif
 
+#define RPI2
 
+#ifdef RPI2
+#define PAGE_TABLE_L1_BASE_ADDR_MASK	(0xffffc000)
+
+#define VIRT_TO_PTE_L1_INDEX(addr)	(((addr)&0xfff00000)>>18)
+
+#define PTE_L1_SECTION_NO_CACHE_AND_WB	(0x0<<2)
+#define PTE_L1_SECTION_DOMAIN_DEFAULT	(0x0<<5)
+#define PTE_ALL_AP_L1_SECTION_DEFAULT	(0x1<<10)
+
+#define PTE_L1_SECTION_PADDR_BASE_MASK	(0xfff00000)
+#define PTE_BITS_L1_SECTION				(0x2)
+
+#define L1_PTR_BASE_ADDR			0x30700000
+#define PHYSICAL_MEM_ADDR			0x00000000
+#define VIRTUAL_MEM_ADDR			0x00000000
+#define MEM_MAP_SIZE				0x40000000
+#define PHYSICAL_IO_ADDR			0x3F000000
+#define VIRTUAL_IO_ADDR				0xc8000000
+#define IO_MAP_SIZE				0x18000000
+#else
 /*mask for page table base addr*/
 #define PAGE_TABLE_L1_BASE_ADDR_MASK	(0xffffc000)
 
@@ -40,6 +61,7 @@ along with this program.  If not, see http://www.gnu.org/licenses/.
 #define PHYSICAL_IO_ADDR			0x48000000
 #define VIRTUAL_IO_ADDR				0xc8000000
 #define IO_MAP_SIZE					0x18000000
+#endif
 
 #ifndef TEST_MMU
 void start_mmu(void){
@@ -67,10 +89,8 @@ unsigned int gen_l1_pte(unsigned int paddr){
 										PTE_BITS_L1_SECTION;
 }
 
-unsigned int gen_l1_pte_addr(unsigned int baddr,\
-										unsigned int vaddr){
-	return (baddr&PAGE_TABLE_L1_BASE_ADDR_MASK)|\
-								VIRT_TO_PTE_L1_INDEX(vaddr);
+unsigned int gen_l1_pte_addr(unsigned int baddr, unsigned int vaddr){
+	return (baddr&PAGE_TABLE_L1_BASE_ADDR_MASK)| VIRT_TO_PTE_L1_INDEX(vaddr);
 }
 
 void init_sys_mmu(void){
@@ -83,8 +103,7 @@ void init_sys_mmu(void){
 		pte|=PTE_ALL_AP_L1_SECTION_DEFAULT;
 		pte|=PTE_L1_SECTION_NO_CACHE_AND_WB;
 		pte|=PTE_L1_SECTION_DOMAIN_DEFAULT;
-		pte_addr=gen_l1_pte_addr(L1_PTR_BASE_ADDR,\
-								VIRTUAL_MEM_ADDR+(j<<20));
+		pte_addr=gen_l1_pte_addr(L1_PTR_BASE_ADDR, VIRTUAL_MEM_ADDR+(j<<20));
 #ifdef TEST_MMU
                 printf("%d ## pte_addr: %x, pte: %x\n", j, pte_addr, pte);
 #else
@@ -96,8 +115,7 @@ void init_sys_mmu(void){
 		pte|=PTE_ALL_AP_L1_SECTION_DEFAULT;
 		pte|=PTE_L1_SECTION_NO_CACHE_AND_WB;
 		pte|=PTE_L1_SECTION_DOMAIN_DEFAULT;
-		pte_addr=gen_l1_pte_addr(L1_PTR_BASE_ADDR,\
-								VIRTUAL_IO_ADDR+(j<<20));
+		pte_addr=gen_l1_pte_addr(L1_PTR_BASE_ADDR, VIRTUAL_IO_ADDR+(j<<20));
 #ifdef TEST_MMU
                 printf("%d (IO) ## pte_addr: %x, pte: %x\n", j, pte_addr, pte);
 #else
@@ -109,6 +127,8 @@ void init_sys_mmu(void){
 #ifdef TEST_MMU
 int main(int argc, char *argv[])
 {
+
+  printf("L1_PTR_BASE_ADDR: %x\n", L1_PTR_BASE_ADDR);
   init_sys_mmu();
   
   return 0;
