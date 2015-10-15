@@ -33,38 +33,59 @@ along with this program.  If not, see http://www.gnu.org/licenses/.
 #define PHYSICAL_MEM_ADDR			0x00000000
 #define VIRTUAL_MEM_ADDR			0x00000000
 #define MEM_MAP_SIZE				0x40000000
-#define PHYSICAL_IO_ADDR			0x3F000000
+#define PHYSICAL_IO_ADDR			0x3F200000
 #define VIRTUAL_IO_ADDR				0xc8000000
 #define IO_MAP_SIZE				0x18000000
 
 #ifndef TEST_MMU
+// ===================================================================        
+//  Setup domain control register - Enable all domains to client mode
+// ===================================================================
+/*
+        MRC     p15, 0, r0, c3, c0, 0      ; Read Domain Access Control Register
+        LDR     r0, =0x55555555            ; Initialize every domain entry to b01 (client)
+        MCR     p15, 0, r0, c3, c0, 0      ; Write Domain Access Control Register  
+*/
+
+void set_dm()
+{
+  __asm__
+  (
+    MRC     p15, 0, r0, c3, c0, 0      ; Read Domain Access Control Register
+    mov     r0, #0xffffffff            ; Initialize every domain entry to b11 (managers)
+    MCR     p15, 0, r0, c3, c0, 0      ; Write Domain Access Control Register  
+  }
+}
+
 void start_mmu(void)
 {
-	unsigned int ttb = L1_PTR_BASE_ADDR;
+  unsigned int ttb = L1_PTR_BASE_ADDR;
 
-	asm (
-		"mcr p15,0,%0,c2,c0,0\n"    /* set base address of page table*/
-		"mvn r0,#0\n"                  
-		"mcr p15,0,r0,c3,c0,0\n"    /* enable all region access*/
+  set_dm();
+  asm 
+  (
+    "mcr p15,0,%0,c2,c0,0\n"    /* set base address of page table*/
 
-		"mov r0,#0x1\n"
-		"mcr p15,0,r0,c1,c0,0\n"    /* set back to control register, enable MMU */
-		"mov r0,r0\n"
-		"mov r0,r0\n"
-		"mov r0,r0\n"
-		:
-		: "r" (ttb)
-		:"r0"
-	);
+    "mov r0,#0x1\n"
+    "mcr p15,0,r0,c1,c0,0\n"    /* set back to control register, enable MMU */
+    "mov r0,r0\n"
+    "mov r0,r0\n"
+    "mov r0,r0\n"
+    :
+    : "r" (ttb)
+    :"r0"
+  );
 }
 #endif
 
-unsigned int gen_l1_pte(unsigned int paddr){
-	return (paddr & 0xfff00000);
+unsigned int gen_l1_pte(unsigned int paddr)
+{
+  return (paddr & 0xfff00000);
 }
 
-unsigned int gen_l1_pte_addr(unsigned int baddr, unsigned int vaddr){
-	return (baddr & 0xffffc000) | VIRT_TO_PTE_L1_INDEX(vaddr);
+unsigned int gen_l1_pte_addr(unsigned int baddr, unsigned int vaddr)
+{
+  return (baddr & 0xffffc000) | VIRT_TO_PTE_L1_INDEX(vaddr);
 }
 
 
@@ -93,12 +114,14 @@ unsigned int gen_l1_pte_addr(unsigned int baddr, unsigned int vaddr){
 //  XN[4]=1       - Execute never on Strongly-ordered memory
 //  Bits[1:0]=10  - Indicate entry is a 1MB section
 // ===================================================================
-void init_sys_mmu(void){
+void init_sys_mmu(void)
+{
 	unsigned int pte;
 	unsigned int pte_addr;
 	int j;
 
-	for(j=0;j<MEM_MAP_SIZE>>20;j++){
+	for(j=0 ; j < MEM_MAP_SIZE >> 20 ; j++)
+        {
 		pte = gen_l1_pte(PHYSICAL_MEM_ADDR+(j<<20));
 		pte |= 2; //  Bits[1:0]=10
 		pte |= 0x3 << 10; // AP[11:10]=11
@@ -106,19 +129,21 @@ void init_sys_mmu(void){
 
 		pte_addr = gen_l1_pte_addr(L1_PTR_BASE_ADDR, VIRTUAL_MEM_ADDR+(j<<20));
 #ifdef TEST_MMU
-                printf("%d ## pte_addr: %x, pte: %x\n", j, pte_addr, pte);
+                printf("%4d ## pte_addr: %08x, pte: %08x\n", j, pte_addr, pte);
 #else
 		*(volatile unsigned int *)pte_addr=pte;
 #endif
 	}
-	for(j=0;j<IO_MAP_SIZE>>20;j++){
+
+	for(j=0 ; j < IO_MAP_SIZE >> 20 ; j++)
+        {
 		pte=gen_l1_pte(PHYSICAL_IO_ADDR+(j<<20));
 		pte |= 2; //  Bits[1:0]=10
 		pte |= 0x3 << 10; // AP[11:10]=11
 		pte |= 0xf << 5 ; // Domain[5:8]=1111
 		pte_addr = gen_l1_pte_addr(L1_PTR_BASE_ADDR, VIRTUAL_IO_ADDR+(j<<20));
 #ifdef TEST_MMU
-                printf("%d (IO) ## pte_addr: %x, pte: %x\n", j, pte_addr, pte);
+                printf("%4d (IO) ## pte_addr: %08x, pte: %08x\n", j, pte_addr, pte);
 #else
 		*(volatile unsigned int *)pte_addr=pte;
 #endif
