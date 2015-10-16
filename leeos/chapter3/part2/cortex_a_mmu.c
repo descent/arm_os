@@ -51,10 +51,10 @@ void set_dm()
 {
   __asm__
   (
-    MRC     p15, 0, r0, c3, c0, 0      ; Read Domain Access Control Register
-    mov     r0, #0xffffffff            ; Initialize every domain entry to b11 (managers)
-    MCR     p15, 0, r0, c3, c0, 0      ; Write Domain Access Control Register  
-  }
+    "MRC     p15, 0, r0, c3, c0, 0\n"      // Read Domain Access Control Register
+    "mov     r0, #0xffffffff\n"            // Initialize every domain entry to b11 (managers)
+    "MCR     p15, 0, r0, c3, c0, 0\n"      // Write Domain Access Control Register  
+  );
 }
 
 void start_mmu(void)
