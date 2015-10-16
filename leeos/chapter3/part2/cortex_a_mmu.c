@@ -33,7 +33,7 @@ along with this program.  If not, see http://www.gnu.org/licenses/.
 #define PHYSICAL_MEM_ADDR			0x00000000
 #define VIRTUAL_MEM_ADDR			0x00000000
 #define MEM_MAP_SIZE				0x40000000
-#define PHYSICAL_IO_ADDR			0x3F200000
+#define PHYSICAL_IO_ADDR			0x3F000000
 #define VIRTUAL_IO_ADDR				0xc8000000
 #define IO_MAP_SIZE				0x18000000
 
